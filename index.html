@@ -456,7 +456,7 @@
 
     if (resultDays.length === 0) return;
 
-    const text = resultDays.join('\n\n');
+    const text = resultDays.join('\n');
     navigator.clipboard.writeText(text).then(() => {
       const btn = document.querySelector('.btn-copy');
       btn.textContent = 'コピーしました！';
