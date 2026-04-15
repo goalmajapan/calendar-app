@@ -44,6 +44,25 @@
       margin-bottom: 14px;
     }
 
+    /* Setup */
+    .setup-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 8px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .setup-input:focus { border-color: #4285f4; }
+
+    .setup-hint {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 12px;
+    }
+
     /* Settings grid */
     .settings-grid {
       display: grid;
@@ -120,36 +139,6 @@
     .status.error { background: #fce8e6; color: #c62828; }
     .status.info { background: #e3f2fd; color: #1565c0; }
 
-    /* Calendar checkboxes */
-    .cal-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .cal-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 14px;
-      cursor: pointer;
-      padding: 6px 8px;
-      border-radius: 8px;
-      transition: background 0.1s;
-    }
-    .cal-item:hover { background: #f5f5f5; }
-    .cal-dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .cal-item input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-
     /* Results */
     .results-header {
       display: flex;
@@ -190,6 +179,31 @@
     }
 
     .divider { border: none; border-top: 1px solid #eee; margin: 14px 0; }
+
+    details summary {
+      cursor: pointer;
+      font-size: 13px;
+      color: #4285f4;
+      user-select: none;
+      margin-top: 8px;
+    }
+    details summary:hover { text-decoration: underline; }
+    details[open] summary { margin-bottom: 12px; }
+
+    .guide-step {
+      font-size: 13px;
+      color: #555;
+      line-height: 1.8;
+      padding-left: 4px;
+    }
+    .guide-step li { margin-bottom: 4px; }
+    .guide-step code {
+      background: #f0f0f0;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+    }
     a { color: #4285f4; }
   </style>
 </head>
@@ -197,7 +211,7 @@
 <div class="container">
   <h1>📅 空き時間チェッカー</h1>
 
-  <!-- サインイン -->
+  <!-- Step 1: Sign in -->
   <div class="card">
     <button class="btn btn-google" id="signInBtn" onclick="signIn()">
       Googleでサインイン
@@ -205,15 +219,7 @@
     <div id="authStatus"></div>
   </div>
 
-  <!-- カレンダー選択 -->
-  <div class="card" id="calCard" style="display:none">
-    <div class="card-title">カレンダーを選択</div>
-    <div class="cal-list" id="calList">
-      <div class="loader">読み込み中...</div>
-    </div>
-  </div>
-
-  <!-- 設定 -->
+  <!-- Step 2: Settings -->
   <div class="card">
     <div class="card-title">設定</div>
     <div class="settings-grid">
@@ -240,7 +246,7 @@
     </button>
   </div>
 
-  <!-- 結果 -->
+  <!-- Results -->
   <div class="card" id="resultsCard" style="display:none">
     <div class="results-header">
       <div class="card-title" style="margin-bottom:0">結果</div>
@@ -252,7 +258,7 @@
 
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script>
-  // Google CloudのClient ID
+  // ここにGoogle CloudのClient IDを貼り付けてください
   const CLIENT_ID = '1022368136744-f6q6gcfj9af4i4m6gvk4ddo6t1v5kkk2.apps.googleusercontent.com';
 
   let tokenClient = null;
@@ -267,63 +273,24 @@
         showStatus('authStatus', 'サインインに失敗しました: ' + (err.message || err.type), 'error');
       }
     });
+
     tokenClient.requestAccessToken();
   }
 
-  async function onTokenReceived(resp) {
+  function onTokenReceived(resp) {
     if (resp.error) {
       showStatus('authStatus', 'エラー: ' + resp.error, 'error');
       return;
     }
     accessToken = resp.access_token;
     showStatus('authStatus', 'サインイン済み ✓', 'ok');
+    document.getElementById('runBtn').disabled = false;
     document.getElementById('signInBtn').textContent = '再サインイン';
-
-    // カレンダー一覧を取得して表示
-    await loadCalendars();
-  }
-
-  async function loadCalendars() {
-    const calCard = document.getElementById('calCard');
-    const calList = document.getElementById('calList');
-    calCard.style.display = 'block';
-    calList.innerHTML = '<div class="loader">読み込み中...</div>';
-
-    try {
-      const resp = await fetch(
-        'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=250',
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      const data = await resp.json();
-      const calendars = data.items || [];
-
-      // チェックボックス一覧を生成（デフォルトは全選択）
-      calList.innerHTML = calendars.map(cal => `
-        <label class="cal-item">
-          <input type="checkbox" value="${escapeHtml(cal.id)}" checked />
-          <span class="cal-dot" style="background:${cal.backgroundColor || '#4285f4'}"></span>
-          <span>${escapeHtml(cal.summary)}</span>
-        </label>
-      `).join('');
-
-      document.getElementById('runBtn').disabled = false;
-    } catch (err) {
-      calList.innerHTML = `<div class="status error">カレンダーの取得に失敗しました: ${err.message}</div>`;
-    }
   }
 
   async function run() {
     if (!accessToken) {
       showStatus('authStatus', 'まずサインインしてください', 'error');
-      return;
-    }
-
-    // 選択されたカレンダーIDを取得
-    const selectedIds = [...document.querySelectorAll('#calList input[type="checkbox"]:checked')]
-      .map(cb => cb.value);
-
-    if (selectedIds.length === 0) {
-      alert('カレンダーを1つ以上選択してください');
       return;
     }
 
@@ -346,14 +313,12 @@
       const rangeEnd = new Date(rangeStart);
       rangeEnd.setDate(rangeEnd.getDate() + days);
 
-      // 選択された全カレンダーからイベントを取得してマージ
-      const allEvents = (await Promise.all(
-        selectedIds.map(id => fetchEvents(id, rangeStart, rangeEnd))
-      )).flat();
+      const events = await fetchEvents(rangeStart, rangeEnd);
 
-      // 終日イベントを除外
-      const timedEvents = allEvents.filter(e => e.start && e.start.dateTime);
+      // Filter out all-day events
+      const timedEvents = events.filter(e => e.start && e.start.dateTime);
 
+      // Generate result per day
       const resultDays = [];
 
       for (let d = 0; d < days; d++) {
@@ -365,12 +330,14 @@
         const dayEnd = new Date(date);
         dayEnd.setHours(endH, endM, 0, 0);
 
+        // Get events overlapping this day's window
         const overlapping = timedEvents.filter(e => {
           const s = new Date(e.start.dateTime);
           const en = new Date(e.end.dateTime);
           return s < dayEnd && en > dayStart;
         });
 
+        // Sort by start
         overlapping.sort((a, b) => new Date(a.start.dateTime) - new Date(b.start.dateTime));
 
         const slots = calcFreeSlots(overlapping, dayStart, dayEnd, minDuration);
@@ -385,7 +352,7 @@
     }
   }
 
-  async function fetchEvents(calendarId, timeMin, timeMax) {
+  async function fetchEvents(timeMin, timeMax) {
     const params = new URLSearchParams({
       timeMin: timeMin.toISOString(),
       timeMax: timeMax.toISOString(),
@@ -395,7 +362,7 @@
     });
 
     const resp = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
 
@@ -436,6 +403,7 @@
       if (clippedEnd > cursor) cursor = clippedEnd;
     }
 
+    // Remaining
     if (dayEnd > cursor) {
       const mins = (dayEnd - cursor) / 60000;
       if (mins >= minDuration) {
@@ -499,11 +467,6 @@
   function showStatus(id, msg, type) {
     const el = document.getElementById(id);
     el.innerHTML = `<div class="status ${type}">${msg}</div>`;
-  }
-
-  // XSS対策
-  function escapeHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 </script>
 </body>
