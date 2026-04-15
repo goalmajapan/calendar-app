@@ -451,7 +451,7 @@
     document.querySelectorAll('.day-block').forEach(block => {
       const label = block.querySelector('.day-label').textContent;
       const slots = [...block.querySelectorAll('.slot')].map(s => s.textContent);
-      resultDays.push(`${label}\n` + slots.map(s => `・${s}`).join('\n'));
+      resultDays.push(`${label}\n` + slots.map(s => `　${s}`).join('\n'));
     });
 
     if (resultDays.length === 0) return;
